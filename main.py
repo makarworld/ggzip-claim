@@ -111,3 +111,4 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logger.exception(e)
+        input("Critical error. Press enter to exit...")
