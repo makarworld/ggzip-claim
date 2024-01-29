@@ -74,6 +74,11 @@ def main():
         while name in used:
             name = random_name()
 
+        if len(codes) == 0:
+            logger.error("No codes left. Fill codes.txt file. Exiting...")
+            input()
+            exit()
+
         code = codes.pop(randint(0, len(codes)-1))
         while code in used:
             code = codes.pop(randint(0, len(codes)-1))
