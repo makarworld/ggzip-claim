@@ -77,11 +77,19 @@ def main():
         code = codes.pop(randint(0, len(codes)-1))
         while code in used:
             code = codes.pop(randint(0, len(codes)-1))
+            if len(codes) == 0:
+                logger.error("No codes left. Fill codes.txt file. Exiting...")
+                input()
+                exit()
         
         if proxies:
             proxy = proxies.pop(randint(0, len(proxies)-1))
             while proxy in used:
                 proxy = proxies.pop(randint(0, len(proxies)-1))
+                if len(proxies) == 0:
+                    logger.warning("No proxies left. Next accounts will be claimed without proxy.")
+                    proxy = None
+                    break
         else:
             proxy = None
 
