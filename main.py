@@ -7,6 +7,7 @@ import os
 logger.level("DEBUG", color='<magenta>')
 
 APPEND_CODES = True
+MANY_PROXY_USES = False
 
 def random_name() -> str:
     return ''.join(choices('abcdefghijklmnopqrstuvwxyz', k=12))
@@ -17,8 +18,7 @@ def get_txt(filename: str, raw: bool = False) -> List[str]:
             if raw:
                 data = f.read()
             else:
-                data = f.read().splitlines()
-                data = [i.strip() for i in data if i.strip()]
+                data = [line.strip() for line in f if line.strip()]
     else:
         logger.debug(f"File {filename} not found. It was created automatically.")
         open(filename, "w", encoding="utf-8").close()
@@ -43,6 +43,7 @@ def write_txt(filename: str, data: Union[List[str], str]) -> None:
 def main():
     wallets = get_txt("wallets.txt")
     codes = get_txt("codes.txt")
+    proxies = get_txt("proxies.txt")
     
     if not wallets:
         logger.error("wallets.txt file is empty. Exiting...")
@@ -76,8 +77,15 @@ def main():
         code = codes.pop(randint(0, len(codes)-1))
         while code in used:
             code = codes.pop(randint(0, len(codes)-1))
+        
+        if proxies:
+            proxy = proxies.pop(randint(0, len(proxies)-1))
+            while proxy in used:
+                proxy = proxies.pop(randint(0, len(proxies)-1))
+        else:
+            proxy = None
 
-        logger.debug(f"Claiming {wallet} as name @{name} with code {code}")
+        logger.debug(f"Claiming {wallet} as name @{name} with code {code} and proxy {proxy}")
 
         req = session.post(
             "https://gg.zip/api/claim",
@@ -87,9 +95,9 @@ def main():
                 "image": "https://gg.zip/assets/graphics/koji.png",
                 "twitterId": str(randint(100000, 9999999)),
                 "wallet": wallet
-            })
+            }, proxy = proxy)
         if req.status_code == 200 and req.json()["success"]:
-            info = session.get(f"https://gg.zip/api/users/{wallet}").json()
+            info = session.get(f"https://gg.zip/api/users/{wallet}", proxy = proxy).json()
             points = info["points"]
             logger.success(f"Claimed {wallet} as name @{name} with code {code} | POINTS: {info['points']}")
 
@@ -97,13 +105,13 @@ def main():
                 write_txt("success.txt", f"{wallet}:{points}")
             
             if APPEND_CODES:
-                invites_list = session.get(f"https://gg.zip/api/invites/{wallet}").json()
+                invites_list = session.get(f"https://gg.zip/api/invites/{wallet}", proxy = proxy).json()
                 invites = [invite["code"] for invite in invites_list]
                 write_txt("codes.txt", invites)
         else:
             logger.error(f"Failed to claim {wallet} as name @{name} with code {code} | {req.status_code=}")
 
-        write_txt("used.txt", [name, code, wallet])
+        write_txt("used.txt", [name, code, wallet, proxy if not MANY_PROXY_USES else ""])
 
 
 if __name__ == "__main__":
