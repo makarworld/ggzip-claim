@@ -38,8 +38,32 @@ def write_txt(filename: str, data: Union[List[str], str]) -> None:
         if isinstance(data, str):
             f.write(data + "\n")
         else:
-            f.write("\n".join(data) + "\n")
+            f.write("\n".join([x for x in data if x]) + "\n")
 
+class GGZip:
+    def __init__(self):
+        self.session = tls_client.Session(
+            client_identifier = "chrome_117",
+            random_tls_extension_order = True
+        )
+    
+    def get_user(self, wallet: str, proxy: Optional[str] = None) -> dict:
+        return self.session.get(f"https://gg.zip/api/users/{wallet}", proxy = proxy).json()
+    
+    def get_invites(self, wallet: str, proxy: Optional[str] = None) -> dict:
+        return self.session.get(f"https://gg.zip/api/invites/{wallet}", proxy = proxy).json()
+
+    def claim(self, wallet: str, name: str, code: str, proxy: Optional[str] = None) -> Dict[str, bool]:
+        return self.session.post(
+            "https://gg.zip/api/claim",
+            json = {
+                "code": code.upper(),
+                "username": name,
+                "image": "https://gg.zip/assets/graphics/koji.png",
+                "twitterId": str(randint(100000, 999999)),
+                "wallet": wallet
+            }, proxy = proxy).json()
+    
 def main():
     wallets = get_txt("wallets.txt")
     codes = get_txt("codes.txt")
@@ -58,15 +82,13 @@ def main():
 
     logger.info(f"Load {len(wallets)} wallets and {len(codes)} codes")
 
+    code_index = 0
+
     for wallet in wallets:
         used = get_txt("used.txt", raw=True)
-        if APPEND_CODES:
-            codes = get_txt("codes.txt")
 
-        session = tls_client.Session(
-            client_identifier = "chrome_117",
-            random_tls_extension_order = True
-        )
+        ggzip_sdk = GGZip()
+
         if wallet in used:
             logger.debug(f"{wallet} already claimed. Skipping...")
             continue
@@ -80,18 +102,26 @@ def main():
             input()
             exit()
 
-        code = codes.pop(randint(0, len(codes)-1))
+        code = codes[code_index]
+        code_index += 1
         while code in used:
-            code = codes.pop(randint(0, len(codes)-1))
+            code = codes[code_index]
             if len(codes) == 0:
                 logger.error("No codes left. Fill codes.txt file. Exiting...")
                 input()
                 exit()
+            code_index += 1
         
         if proxies:
-            proxy = proxies.pop(randint(0, len(proxies)-1))
+            proxy = proxies[randint(0, len(proxies)-1)]
+            if MANY_PROXY_USES is False:
+                proxies.pop(proxies.index(proxy))
+
             while proxy in used:
-                proxy = proxies.pop(randint(0, len(proxies)-1))
+                proxy = proxies[randint(0, len(proxies)-1)]
+                if MANY_PROXY_USES is False:
+                    proxies.pop(proxies.index(proxy))
+
                 if len(proxies) == 0:
                     logger.warning("No proxies left. Next accounts will be claimed without proxy.")
                     proxy = None
@@ -101,30 +131,31 @@ def main():
 
         logger.debug(f"Claiming {wallet} as name @{name} with code {code} and proxy {proxy}")
 
-        req = session.post(
-            "https://gg.zip/api/claim",
-            json = {
-                "code": code.upper(),
-                "username": name,
-                "image": "https://gg.zip/assets/graphics/koji.png",
-                "twitterId": str(randint(100000, 9999999)),
-                "wallet": wallet
-            }, proxy = proxy)
-        if req.status_code == 200 and req.json()["success"]:
-            info = session.get(f"https://gg.zip/api/users/{wallet}", proxy = proxy).json()
+        req = ggzip_sdk.claim(wallet, name, code, proxy = proxy)
+        if req["success"]:
+            info = ggzip_sdk.get_user(wallet, proxy = proxy)
             points = info["points"]
-            logger.success(f"Claimed {wallet} as name @{name} with code {code} | POINTS: {info['points']}")
+            logger.success(f"Claimed {wallet} as name @{name} with code {code} | POINTS: {points}")
 
             if points > 0:
                 write_txt("success.txt", f"{wallet}:{points}")
             
             if APPEND_CODES:
-                invites_list = session.get(f"https://gg.zip/api/invites/{wallet}", proxy = proxy).json()
+                invites_list = ggzip_sdk.get_invites(wallet, proxy = proxy)
                 invites = [invite["code"] for invite in invites_list]
+                codes += invites
                 write_txt("codes.txt", invites)
         else:
-            logger.error(f"Failed to claim {wallet} as name @{name} with code {code} | {req.status_code=}")
-
+            info = ggzip_sdk.get_user(wallet, proxy = proxy)
+            if info.get("success") is not False:
+                points = info["points"]
+                logger.success(f"Failed to claim {wallet}. Already registered. | POINTS: {points}")
+                if points > 0:
+                    write_txt("success.txt", f"{wallet}:{points}")
+            else:
+                logger.error(f"Failed to claim {wallet} as name @{name} with code {code} | {req=}")
+                continue 
+            
         write_txt("used.txt", [name, code, wallet, proxy if not MANY_PROXY_USES else ""])
 
 
