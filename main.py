@@ -44,6 +44,7 @@ def main():
     wallets = get_txt("wallets.txt")
     codes = get_txt("codes.txt")
     proxies = get_txt("proxies.txt")
+    proxies = ["http://" + x if not x.startswith("http://") else x for x in proxies]
     
     if not wallets:
         logger.error("wallets.txt file is empty. Exiting...")

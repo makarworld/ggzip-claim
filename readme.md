@@ -1,6 +1,8 @@
 # Description
 Script for claim G points from gg.zip
 
+**If you have any questions, write to issues or telegram chat: [t.me/abuztradechat](https://t.me/abuztradechat)**
+
 # Installation
 
 1. Install python 3.10+
@@ -8,7 +10,7 @@ Script for claim G points from gg.zip
 3. Fill file `wallets.txt` with your solana addresses
 4. Add at least one code to `codes.txt`
 5. If you want to use proxys, fill file `proxies.txt` with format `login:password@ip:port`
-`MANY_PROXY_USES` - configuration proxy uses. If `False` - 1 wallet = 1 proxy, If `True` - many wallets = random proxy from file
+`MANY_PROXY_USES` - configuration proxy uses. If `False` - 1 wallet = 1 proxy, If `True` - each wallet = random proxy from file.
 6. Run `python main.py`
 
 # Configure
