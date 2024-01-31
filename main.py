@@ -154,7 +154,10 @@ def main():
                     write_txt("success.txt", f"{wallet}:{points}")
             else:
                 logger.error(f"Failed to claim {wallet} as name @{name} with code {code} | {req=}")
-                continue 
+                if req.get("message") == "Could not find wallet points":
+                    pass # will be saved as used
+                else:
+                    continue 
             
         write_txt("used.txt", [name, code, wallet, proxy if not MANY_PROXY_USES else ""])
 
